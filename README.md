@@ -63,7 +63,7 @@ Your OneSky project ID
 #### options.sourceFile
 Type: `String`
 
-The filename of the imported translation document. You can find a list of your uploaded files at "Projects > _YOUR-PROJECT-NAME_ > Phrases Management > Manage Files", when logged in as a project OneSky admin.
+The filename of the imported translation document. You can find a list of your uploaded files at "Projects > _YOUR-PROJECT-NAME_ > Phrases Management > Manage Files", when logged in as a project admin in your OneSky account.
 
 #### options.output
 Type: `String`
@@ -123,6 +123,7 @@ grunt.initConfig({
         }
     },
 });
+```
 
 ## Contributing
 In lieu of a formal styleguide, take care to maintain the existing coding style via eslint. Add unit tests for any new or changed functionality. Lint and test your code using [Grunt](http://gruntjs.com/).
