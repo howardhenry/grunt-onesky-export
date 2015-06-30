@@ -1,5 +1,4 @@
 node_modules
-onesky.json
-.idea
 npm-debug.log
 tmp
+.idea

@@ -10,6 +10,7 @@
 
 var crypto = require('crypto');
 var _ = require('lodash');
+var q = require('q');
 var request = require('request');
 var sortObject = require('deep-sort-object');
 
@@ -20,7 +21,6 @@ module.exports = function (grunt) {
 
         var done = this.async();
 
-        // TODO: Add isReady options (only download if translation is ready to be published)
         var options = this.options({
             authFile: 'onesky.json',
             dest: '/',
@@ -31,8 +31,12 @@ module.exports = function (grunt) {
             indent: 4,
             exportType: 'multilingual',
 
-            // Required only for exporting translations in separate language files
-            locale: ''
+            // Required only for exportType === 'multilingual'
+            fileFormat: '',
+
+            // Required only for exportType === 'locale'
+            locale: '',
+            readyToPublish: false
         });
 
         return fetchTranslations();
@@ -48,20 +52,132 @@ module.exports = function (grunt) {
 
             if (options.exportType === 'multilingual') {
                 url = url + 'translations/multilingual';
-                queryParams = _.extend(queryParams, { 'file_format': 'I18NEXT_MULTILINGUAL_JSON' });
+
+                if (options.fileFormat) {
+                    queryParams = _.extend(queryParams, { 'file_format': options.fileFormat });
+                } else {
+                    grunt.fail.warn('Export type "multilingual" requires options.fileFormat to be set');
+                }
             }
 
             if (options.exportType === 'locale') {
                 url = url + 'translations';
-                queryParams = _.extend(queryParams, { 'locale': options.locale });
+
+                if (options.locale) {
+                    queryParams = _.extend(queryParams, { 'locale': options.locale });
+                } else {
+                    grunt.fail.warn('Export type "locale" requires options.locale to be set');
+                }
             }
 
             requestOptions = {
                 method: 'GET',
                 url: url,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
+                qs: {
+                    'api_key': api.publicKey,
+                    'timestamp': api.timestamp,
+                    'dev_hash': api.devHash
+                }
+            };
+            requestOptions.qs = _.extend(requestOptions.qs, queryParams);
+
+            if (options.readyToPublish && options.exportType === 'locale' && options.locale) {
+                isReadyToPublish(options.locale)
+                    .then(function () {
+                        request(requestOptions, onFetchTranslations);
+                    })
+                    .catch(function () {
+                        grunt.log.error('Translation download aborted. ' +
+                        'Locale: "' + options.locale + '" is not ready to be published');
+
+                        done();
+                    });
+            } else {
+                request(requestOptions, onFetchTranslations);
+            }
+
+            function onFetchTranslations(error, response, body) {
+                if (error) { throw error; }
+
+                if (response.statusCode === 200) {
+                    onFetchTranslationSuccess(body);
+                } else {
+                    onFetchTranslationError(body);
+                }
+
+                done();
+            }
+
+            function onFetchTranslationSuccess(body) {
+                var fileName;
+                var jsonData;
+                var data = JSON.parse(body);
+
+                if (options.sortKeys) { data = sortObject(data); }
+
+                jsonData = JSON.stringify(data, null, options.indent);
+
+                if (options.exportType === 'multilingual') {
+                    fileName = options.output || options.sourceFile;
+                    grunt.file.write(options.dest + fileName, jsonData);
+                }
+
+                if (options.exportType === 'locale') {
+                    fileName = options.output || options.locale + '_' + options.sourceFile;
+                    grunt.file.write(options.dest + fileName, jsonData);
+                }
+
+                grunt.log.ok('Translation downloaded: ' + options.dest + fileName);
+            }
+
+            function onFetchTranslationError(body) {
+                var error = JSON.parse(body);
+                var errorMsg;
+                var statusCode;
+
+                if (_.has(error, 'meta.status')) {
+                    statusCode = error.meta.status;
+                }
+                if (_.has(error, 'meta.message')) {
+                    errorMsg = error.meta.message;
+                }
+
+                grunt.fail.warn(statusCode + ': ' + errorMsg);
+            }
+        }
+
+        function isReadyToPublish(locale) {
+            var deferred = q.defer();
+            var isReady = false;
+
+            getLanguages()
+                .then(function (languages) {
+                    _.forEach(languages, function (language) {
+                        if (language['locale'] === locale && language['is_ready_to_publish']) { isReady = true; }
+                    });
+                })
+                .finally(function () {
+                    if (isReady) {
+                        deferred.resolve(isReady);
+                    } else {
+                        deferred.reject(isReady);
+                    }
+                });
+
+            return deferred.promise;
+        }
+
+
+        function getLanguages() {
+            var deferred = q.defer();
+            var api = getApi();
+            var url = api.baseUrl + api.path + 'languages';
+
+            var requestOptions = {
+                method: 'GET',
+                url: url,
+                headers: { 'Content-Type': 'application/json' },
                 qs: {
                     'api_key': api.publicKey,
                     'timestamp': api.timestamp,
@@ -69,73 +185,48 @@ module.exports = function (grunt) {
                 }
             };
 
-            requestOptions.qs = _.extend(requestOptions.qs, queryParams);
+            request(requestOptions, onGetLanguages);
 
-            return request(requestOptions, onFetchTranslations);
-        }
+            function onGetLanguages(error, response, body) {
+                if (error) { throw error; }
 
+                body = JSON.parse(body);
 
-        function onFetchTranslations(error, response, body) {
-            if (!error) {
                 if (response.statusCode === 200) {
-                    onFetchTranslationSuccess(body);
+                    onGetLanguagesSuccess(body);
                 } else {
-                    onFetchTranslationError(response);
+                    onGetLanguagesError(body);
                 }
-            } else {
-                grunt.fail.warn('Request error');
             }
 
-            done();
-        }
-
-
-        function onFetchTranslationSuccess(data) {
-            var fileName;
-            var jsonData;
-
-            data = JSON.parse(data);
-
-            if (options.sortKeys) {
-                data = sortObject(data);
+            function onGetLanguagesSuccess(data) {
+                deferred.resolve(data.data);
             }
 
-            jsonData = JSON.stringify(data, null, options.indent);
+            function onGetLanguagesError(error) {
+                var errorMsg;
+                var statusCode;
 
+                if (_.has(error, 'meta.status')) { statusCode = error.meta.status; }
+                if (_.has(error, 'meta.message')) { errorMsg = error.meta.message; }
 
-            if (options.exportType === 'multilingual') {
-                fileName = options.output || options.sourceFile;
-                grunt.file.write(options.dest + fileName, jsonData);
+                throw statusCode + ': ' + errorMsg;
             }
 
-            if (options.exportType === 'locale') {
-                fileName = options.output || options.locale + '_' + options.sourceFile;
-                grunt.file.write(options.dest + fileName, jsonData);
-            }
-
-            grunt.log.ok('Translation Downloaded: ' + options.dest + fileName);
-        }
-
-
-        function onFetchTranslationError(error) {
-            switch (error.statusCode) {
-                case 400:
-                    grunt.fail.warn('Invalid source file: ' + options.sourceFile);
-                    break;
-                case 401:
-                    grunt.fail.warn('Unauthorized - Invalid OneSky API keys / project ID');
-                    break;
-                default:
-                    break;
-            }
+            return deferred.promise;
         }
 
 
         function getApi() {
             var oneSkyKeys = grunt.file.readJSON(options.authFile);
-
             var timestamp = Math.floor(Date.now() / 1000);
-            var devHash = crypto.createHash('md5').update(timestamp + oneSkyKeys.secretKey).digest('hex');
+            var devHash;
+
+            if (!oneSkyKeys.publicKey || !oneSkyKeys.secretKey) {
+                grunt.fail.warn('Auth file requires both publicKey and secretKey');
+            } else {
+                devHash = crypto.createHash('md5').update(timestamp + oneSkyKeys.secretKey).digest('hex');
+            }
 
             return {
                 baseUrl: apiRoot,
