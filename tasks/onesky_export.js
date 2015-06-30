@@ -100,10 +100,16 @@ module.exports = function (grunt) {
             function onFetchTranslations(error, response, body) {
                 if (error) { throw error; }
 
-                if (response.statusCode === 200) {
-                    onFetchTranslationSuccess(body);
-                } else {
-                    onFetchTranslationError(body);
+                switch (response.statusCode) {
+                    case 200:
+                        onFetchTranslationSuccess(body);
+                        break;
+                    case 204:
+                        onFetchTranslationSuccess(null);
+                        break;
+                    default:
+                        onFetchTranslationError(body);
+                        break;
                 }
 
                 done();
@@ -112,7 +118,9 @@ module.exports = function (grunt) {
             function onFetchTranslationSuccess(body) {
                 var fileName;
                 var jsonData;
-                var data = JSON.parse(body);
+                var data = {};
+
+                if (body) { data = JSON.parse(body); }
 
                 if (options.sortKeys) { data = sortObject(data); }
 
