@@ -1,7 +1,7 @@
 {
   "name": "grunt-onesky-export",
   "description": "Export translations from your OneSky projects",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "homepage": "https://github.com/howardhenry/grunt-onesky-export",
   "author": {
     "name": "Howard Henry",
