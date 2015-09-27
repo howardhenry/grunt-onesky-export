@@ -22,19 +22,6 @@ grunt.loadNpmTasks('grunt-onesky-export');
 ### Overview
 In your project's Gruntfile, add a section named `oneskyExport` to the data object passed into `grunt.initConfig()`.
 
-```js
-grunt.initConfig({
-  oneskyExport: {
-    options: {
-      // Task-specific options go here.
-    },
-    your_target: {
-      // Target-specific file lists and/or options go here.
-    },
-  },
-});
-```
-
 ### Options
 
 #### options.authFile
@@ -65,30 +52,45 @@ Type: `String`
 
 The filename of the imported translation document. You can find a list of your uploaded files at "Projects > _YOUR-PROJECT-NAME_ > Phrases Management > Manage Files", when logged in as a project admin in your OneSky account.
 
-#### options.output
+#### options.locale
+Type: `String`
+
+The specific translation language you wish to export. This option is only **required** when options.exportType is set to `locale`
+
+#### options.fileFormat
+Type: `String`
+
+The file format for OneSky to assume when exporting translations (if different from source file format). See list of available [file formats](https://github.com/onesky/api-documentation-platform/blob/master/reference/format.md). This option is only valid when options.exportType is set to `multilingual`.
+
+NOTE: It is recommended to only convert from a source file with format: `I18NEXT_HIERARCHICAL_JSON`. Otherwise, leave this unset to maintain the original source file format.
+
+#### options.output (optional)
 Type: `String`
 
 The filename for the exported translation file(s).
 
-#### options.exportType
+#### options.exportType (optional)
 Type: `String` Default: `multilingual` Allowed values: `locale`, `multilingual`
 
 The export method to generate translation documents.
-`locale` fetches a specified language translation and exports to a single file.
-`multilingual` fetches all language translations and exports to a single file.
 
-#### options.locale
-Type: `String`
+* `locale` fetches a specified language translation and exports to a single file.
+* `multilingual` fetches all language translations and exports to a single file.
 
-The specific translation language you wish to export. This option is required when exportType is set to `locale` 
+#### options.readyToPublish (optional)
+Type: `Boolean` Default: `false`
 
-#### options.sortKeys
+Checks whether the specified locale is flagged _isReadyToPublish_ in your OneSky project. This options is only valid when options.exportType is set to `locale`.
+
+NOTE: Enabling this option triggers an additional call to the OneSky API to first check the status of the locale before downloading the translations.
+
+#### options.sortKeys (optional)
 Type: `Boolean`
 Default value: `false`
 
 Sort exported translation keys alphabetically.
 
-#### options.indent
+#### options.indent (optional)
 Type: `Integer`
 Default value: `4`
 
@@ -106,14 +108,14 @@ grunt.initConfig({
             indent: 4,
             sortKeys: true
         },
-        translateMedia: {
+        exportMedia: {
             options: {
                 sourceFile: 'media.json',
                 output: 'media.json',
                 exportType: 'multilingual'
             }
         },
-        translateUser: {
+        exportUser: {
             options: {                
                 sourceFile: 'user.json',
                 output: 'user/en.json',
