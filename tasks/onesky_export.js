@@ -76,9 +76,15 @@ module.exports = function (grunt) {
 
 
         function onFetchTranslations(error, response, body) {
+            var contentType = 'application/json';
+
             if (!error) {
                 if (response.statusCode === 200) {
-                    onFetchTranslationSuccess(body);
+
+                    if (_.has(response, 'headers.content-type')) {
+                        contentType = response['headers']['content-type'];
+                    }
+                    onFetchTranslationSuccess(body, contentType);
                 } else {
                     onFetchTranslationError(response);
                 }
@@ -90,27 +96,25 @@ module.exports = function (grunt) {
         }
 
 
-        function onFetchTranslationSuccess(data) {
+        function onFetchTranslationSuccess(data, contentType) {
             var fileName;
-            var jsonData;
+            var fileData = data;
 
-            data = JSON.parse(data);
+            if (contentType === 'application/json') {
+                data = JSON.parse(data);
 
-            if (options.sortKeys) {
-                data = sortObject(data);
+                if (options.sortKeys) { data = sortObject(data); }
+                fileData = JSON.stringify(data, null, options.indent);
             }
-
-            jsonData = JSON.stringify(data, null, options.indent);
-
 
             if (options.exportType === 'multilingual') {
                 fileName = options.output || options.sourceFile;
-                grunt.file.write(options.dest + fileName, jsonData);
+                grunt.file.write(options.dest + fileName, fileData);
             }
 
             if (options.exportType === 'locale') {
                 fileName = options.output || options.locale + '_' + options.sourceFile;
-                grunt.file.write(options.dest + fileName, jsonData);
+                grunt.file.write(options.dest + fileName, fileData);
             }
 
             grunt.log.ok('Translation Downloaded: ' + options.dest + fileName);
