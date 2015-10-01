@@ -104,7 +104,7 @@ module.exports = function (grunt) {
                 data = JSON.parse(data);
 
                 if (options.sortKeys) { data = sortObject(data); }
-                fileData = JSON.stringify(data, null, options.indent);
+                fileData = JSON.stringify(data, null, options.indent) + '\n';
             }
 
             if (options.exportType === 'multilingual') {
