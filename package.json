@@ -25,7 +25,8 @@
     "node": ">= 0.8.0"
   },
   "scripts": {
-    "test": "grunt test"
+    "test": "grunt test",
+    "eslint": "grunt eslint"
   },
   "dependencies": {
     "deep-sort-object": "^0.1.1",
@@ -34,7 +35,7 @@
   },
   "devDependencies": {
     "grunt": "~0.4.5",
-    "grunt-eslint": "^16.0.0"
+    "grunt-eslint": "^19.0.0"
   },
   "peerDependencies": {
     "grunt": ">=0.4.0"

@@ -6,13 +6,10 @@
  * Licensed under the MIT license.
  */
 
-'use strict';
-
 var crypto = require('crypto');
 var _ = require('lodash');
 var request = require('request');
 var sortObject = require('deep-sort-object');
-
 var apiRoot = 'https://platform.api.onesky.io/1/';
 
 module.exports = function (grunt) {
@@ -20,6 +17,7 @@ module.exports = function (grunt) {
 
         var done = this.async();
 
+        // eslint-disable-next-line
         // TODO: Add isReady options (only download if translation is ready to be published)
         var options = this.options({
             authFile: 'onesky.json',
@@ -38,7 +36,6 @@ module.exports = function (grunt) {
         return fetchTranslations();
 
         ///////////////////////////
-
 
         function fetchTranslations() {
             var api = getApi();
@@ -74,7 +71,6 @@ module.exports = function (grunt) {
             return request(requestOptions, onFetchTranslations);
         }
 
-
         function onFetchTranslations(error, response, body) {
             var contentType = 'application/json';
 
@@ -82,7 +78,7 @@ module.exports = function (grunt) {
                 if (response.statusCode === 200) {
 
                     if (_.has(response, 'headers.content-type')) {
-                        contentType = response['headers']['content-type'];
+                        contentType = response.headers['content-type'];
                     }
                     onFetchTranslationSuccess(body, contentType);
                 } else {
@@ -94,7 +90,6 @@ module.exports = function (grunt) {
 
             done();
         }
-
 
         function onFetchTranslationSuccess(data, contentType) {
             var fileName;
@@ -120,7 +115,6 @@ module.exports = function (grunt) {
             grunt.log.ok('Translation Downloaded: ' + options.dest + fileName);
         }
 
-
         function onFetchTranslationError(error) {
             switch (error.statusCode) {
                 case 400:
@@ -133,7 +127,6 @@ module.exports = function (grunt) {
                     break;
             }
         }
-
 
         function getApi() {
             var oneSkyKeys = grunt.file.readJSON(options.authFile);
